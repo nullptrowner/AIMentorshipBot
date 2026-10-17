@@ -1,0 +1,59 @@
+# Isolated startup verification. No live provider credentials and no public webhook registration.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: studio
+      POSTGRES_PASSWORD: smoke-only-password
+      POSTGRES_DB: studio_smoke_test
+    tmpfs: ["/var/lib/postgresql/data"]
+    mem_limit: 384m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U studio -d studio_smoke_test"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    mem_limit: 96m
+  migrate:
+    image: team-ai-studio:test
+    environment: &environment
+      DATABASE_URL: postgresql+asyncpg://studio:smoke-only-password@postgres:5432/studio_smoke_test
+      REDIS_URL: redis://redis:6379/0
+      BOT_TOKEN: 123456:SMOKE_TEST_INVALID_TOKEN_NOT_FOR_TELEGRAM
+      ADMIN_IDS: "[1]"
+      PUBLIC_URL: https://smoke.invalid
+      TELEGRAM_SECRET: smoke-webhook-secret-at-least-32-characters
+      MEDIA_SECRET: smoke-media-secret-at-least-32-characters
+      MEDIA_DIR: /app/data/media
+      INPUT_RETENTION_HOURS: "24"
+      OUTPUT_RETENTION_HOURS: "72"
+    command: ["sh", "-c", "alembic upgrade head && team-ai seed"]
+    depends_on:
+      postgres: {condition: service_healthy}
+  app:
+    image: team-ai-studio:test
+    environment: *environment
+    ports: ["127.0.0.1:58000:8000"]
+    mem_limit: 384m
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/readyz', timeout=3)"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+  worker:
+    image: team-ai-studio:test
+    environment: *environment
+    command: ["team-ai", "worker"]
+    mem_limit: 512m
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: ["CMD", "team-ai", "worker-health"]
+      interval: 3s
+      timeout: 5s
+      retries: 20

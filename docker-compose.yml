@@ -1,0 +1,86 @@
+x-app: &app
+  build: .
+  env_file: .env
+  restart: unless-stopped
+  volumes: ["media:/app/data"]
+  depends_on:
+    postgres: {condition: service_healthy}
+    redis: {condition: service_healthy}
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: ["ALL"]
+  logging:
+    driver: json-file
+    options: {max-size: "5m", max-file: "3"}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: studio
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: studio
+    volumes: ["postgres:/var/lib/postgresql/data"]
+    command: ["postgres", "-c", "shared_buffers=64MB", "-c", "max_connections=35", "-c", "work_mem=2MB"]
+    mem_limit: 384m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U studio -d studio"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "64mb", "--maxmemory-policy", "noeviction"]
+    volumes: ["redis:/data"]
+    mem_limit: 96m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  migrate:
+    <<: *app
+    restart: "no"
+    command: ["sh", "-c", "alembic upgrade head && team-ai seed"]
+    mem_limit: 256m
+  app:
+    <<: *app
+    command: ["team-ai", "serve"]
+    mem_limit: 384m
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/readyz', timeout=3)"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+  worker:
+    <<: *app
+    command: ["team-ai", "worker"]
+    mem_limit: 512m
+    stop_grace_period: 60s
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "team-ai", "worker-health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN}
+    ports: ["80:80", "443:443"]
+    volumes: ["./deploy/Caddyfile:/etc/caddy/Caddyfile:ro", "caddy:/data"]
+    mem_limit: 64m
+    depends_on: [app]
+
+volumes:
+  postgres:
+  redis:
+  media:
+  caddy:

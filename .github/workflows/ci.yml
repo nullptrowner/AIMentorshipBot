@@ -1,0 +1,46 @@
+name: Quality and integration
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: studio
+          POSTGRES_PASSWORD: test-only-password
+          POSTGRES_DB: studio_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U studio -d studio_test"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+    env:
+      DATABASE_URL: postgresql+asyncpg://studio:test-only-password@127.0.0.1:5432/studio_test
+      TEST_DATABASE_URL: postgresql+asyncpg://studio:test-only-password@127.0.0.1:5432/studio_test
+      TEST_REDIS_URL: redis://127.0.0.1:6379/15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install uv==0.9.16
+      - run: uv sync --frozen --extra dev
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: uv run --frozen --extra dev ruff check src tests migrations deploy/init_env.py
+      - run: uv run --frozen --extra dev ruff format --check src tests migrations deploy/init_env.py
+      - run: uv run --frozen --extra dev mypy --no-incremental
+      - run: uv run --frozen --extra dev alembic upgrade head
+      - run: uv run --frozen --extra dev alembic check
+      - run: uv run --frozen --extra dev pytest -q
+      - run: uv run --frozen --extra dev alembic downgrade base
+      - run: uv run --frozen --extra dev alembic upgrade head
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t studio:ci .
+      - run: docker run --rm studio:ci python -c 'from premium_bot.cli import main; from premium_bot.api import create_app'
+      - run: docker run --rm studio:ci ffprobe -version
