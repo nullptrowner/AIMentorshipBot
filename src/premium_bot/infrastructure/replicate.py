@@ -19,6 +19,8 @@ class ModelInfo:
     max_images: int
     audio: bool
     max_audio_seconds: int | None = None
+    min_images: int = 0
+    requires_audio: bool = False
 
 
 class ModelProvider(Protocol):
@@ -67,7 +69,17 @@ class NanoBanana:
 
 
 class Wan:
-    info = ModelInfo("wan", "wan-video/wan-2.2-s2v", "Wan 2.2 S2V", "video", "Бюджет", 1, True)
+    info = ModelInfo(
+        "wan",
+        "wan-video/wan-2.2-s2v",
+        "Wan 2.2 S2V",
+        "video",
+        "Бюджет",
+        1,
+        True,
+        min_images=1,
+        requires_audio=True,
+    )
 
     def build(
         self, prompt: str, params: Json, images: list[str], audio: str | None, seconds: Decimal
@@ -109,7 +121,16 @@ class Seedance:
 
 class OmniHuman:
     info = ModelInfo(
-        "omni", "bytedance/omni-human-1.5", "OmniHuman 1.5", "video", "Про", 1, True, 35
+        "omni",
+        "bytedance/omni-human-1.5",
+        "OmniHuman 1.5",
+        "video",
+        "Про",
+        1,
+        True,
+        35,
+        min_images=1,
+        requires_audio=True,
     )
 
     def build(

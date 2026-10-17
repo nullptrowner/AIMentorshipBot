@@ -80,7 +80,20 @@ async def quote(
     seconds = (
         audios[0].seconds
         if audios
-        else Decimal(str(params.get("duration", model.defaults.get("duration", 0))))
+        else Decimal(
+            str(
+                params.get(
+                    "duration",
+                    model.defaults.get(
+                        "duration",
+                        model.api_schema["components"]["schemas"]["Input"]
+                        .get("properties", {})
+                        .get("duration", {})
+                        .get("default", 0),
+                    ),
+                )
+            )
+        )
     )
     if seconds < 0:
         raise BusinessError("Для фиксированной цены выберите явную длительность.")

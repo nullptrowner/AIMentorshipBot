@@ -110,11 +110,14 @@ async def choose_model(event: CallbackQuery, state: FSMContext, rt: Runtime) -> 
             event,
             f"<b>{safe(model.name)}</b>\n\nОтправьте фото как изображение или файл. Максимум: {info.max_images}.\nЗатем нажмите «Далее»."
             + (
-                "\nАудио на следующем шаге."
-                if info.audio
+                "\nДля этой модели фото и аудио обязательны. Аудио на следующем шаге."
+                if info.requires_audio
                 else "\nДля генерации по тексту можно пропустить."
             ),
-            keyboard([("Далее", "images:done")]),
+            keyboard(
+                [("Далее", "images:done")],
+                *([] if info.min_images else [[("Без фото", "images:done")]]),
+            ),
         )
     else:
         await state.set_state(Studio.prompt)
@@ -178,8 +181,14 @@ async def images_done(event: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     info = REGISTRY[data["model"]].info
     if info.audio:
-        if not data["media"]:
-            raise BusinessError("Сначала отправьте фотографию.")
+        if len(data["media"]) < info.min_images:
+            raise BusinessError(
+                "Эта модель требует фото и аудио. Для видео по тексту выберите Seedance."
+            )
+        if not data["media"] and not info.requires_audio:
+            await state.set_state(Studio.prompt)
+            await show(event, "Опишите желаемое видео: сцену, движения и звук.", keyboard())
+            return
         await state.set_state(Studio.audio)
         suffix = f" Лимит модели: {info.max_audio_seconds} с." if info.max_audio_seconds else ""
         await show(
@@ -187,11 +196,20 @@ async def images_done(event: CallbackQuery, state: FSMContext) -> None:
             "Отправьте аудиофайл или голосовое сообщение."
             + suffix
             + "\n\nИсходная речь используется как вход модели; точность синхронизации зависит от результата.",
-            keyboard(),
+            keyboard(*([] if info.requires_audio else [[("Без аудио", "audio:skip")]])),
         )
     else:
         await state.set_state(Studio.prompt)
         await show(event, "Опишите, что нужно создать или изменить на фото.", keyboard())
+
+
+@router.callback_query(Studio.audio, F.data == "audio:skip")
+async def skip_audio(event: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    if REGISTRY[data["model"]].info.requires_audio:
+        raise BusinessError("Эта модель требует аудио. Для видео без аудио выберите Seedance.")
+    await state.set_state(Studio.prompt)
+    await show(event, "Опишите желаемое видео: сцену, движения и звук.", keyboard())
 
 
 @router.message(Studio.prompt, F.text)
@@ -213,6 +231,18 @@ async def parameters(event: Message | CallbackQuery, state: FSMContext, rt: Runt
             .get("Input", {})
             .get("properties", {})
         )
+        has_audio = bool(
+            data["media"]
+            and await s.scalar(
+                select(Media.id)
+                .where(
+                    Media.id.in_([uuid.UUID(mid) for mid in data["media"]]),
+                    Media.kind == "audio",
+                    Media.deleted.is_(False),
+                )
+                .limit(1)
+            )
+        )
     rows = []
     if "width" in props and "height" in props:
         width = data["params"].get(
@@ -222,8 +252,13 @@ async def parameters(event: Message | CallbackQuery, state: FSMContext, rt: Runt
             "height", model.defaults.get("height", props["height"].get("default", 1024))
         )
         rows.append([(f"Размер: {width} × {height}", "dimensions")])
-    if REGISTRY[model.key].info.audio:
+    if has_audio:
         rows.append([("Обрезать длительность аудио", "trim")])
+    elif model.kind == "video" and "duration" in props:
+        duration = data["params"].get(
+            "duration", model.defaults.get("duration", props["duration"].get("default", 5))
+        )
+        rows.append([(f"Длительность: {duration} с", "duration:next")])
     rows.append([("Изменить промпт", "editprompt")])
     for field, title in [
         ("aspect_ratio", "Формат"),
@@ -357,6 +392,34 @@ async def change_parameter(event: CallbackQuery, state: FSMContext, rt: Runtime)
         current = data["params"].get(field, model.defaults.get(field, prop.get("default")))
         index = options.index(current) if current in options else -1
         data["params"][field] = options[(index + 1) % len(options)]
+    await state.update_data(params=data["params"])
+    await parameters(event, state, rt)
+
+
+@router.callback_query(Studio.parameters, F.data == "duration:next")
+async def change_duration(event: CallbackQuery, state: FSMContext, rt: Runtime) -> None:
+    data = await state.get_data()
+    async with rt.sessions() as s:
+        model = await s.get(AIModel, data["model"])
+        if not model or model.kind != "video":
+            raise BusinessError("Выбор длительности недоступен.")
+        prop = model.api_schema["components"]["schemas"]["Input"]["properties"].get("duration")
+        if not prop:
+            raise BusinessError("Эта модель определяет длительность по аудио.")
+        if data["media"] and await s.scalar(
+            select(Media.id)
+            .where(Media.id.in_([uuid.UUID(mid) for mid in data["media"]]), Media.kind == "audio")
+            .limit(1)
+        ):
+            raise BusinessError("Длительность определяется аудио; используйте обрезку.")
+        options = [v for v in (5, 10, 15) if prop.get("minimum", 1) <= v <= prop.get("maximum", 15)]
+        if not options:
+            raise BusinessError("Нет совместимых длительностей.")
+        current = data["params"].get(
+            "duration", model.defaults.get("duration", prop.get("default"))
+        )
+        index = options.index(current) if current in options else -1
+        data["params"]["duration"] = options[(index + 1) % len(options)]
     await state.update_data(params=data["params"])
     await parameters(event, state, rt)
 

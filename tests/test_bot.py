@@ -13,6 +13,141 @@ from premium_bot.bot.user import Studio
 pytestmark = pytest.mark.integration
 
 
+async def seedance_model(rt):
+    from premium_bot.db import AIModel
+
+    async with rt.sessions.begin() as s:
+        model = await s.get(AIModel, "seedance")
+        model.enabled = True
+        model.version = "test-seedance"
+        model.pricing = {"per_second": "0.15", "markup_percent": "25", "source": "test"}
+        model.api_schema = {
+            "components": {
+                "schemas": {
+                    "Input": {
+                        "type": "object",
+                        "required": ["prompt"],
+                        "properties": {
+                            "prompt": {"type": "string"},
+                            "duration": {
+                                "type": "integer",
+                                "default": 5,
+                                "minimum": -1,
+                                "maximum": 15,
+                            },
+                            "reference_images": {"type": "array", "items": {"type": "string"}},
+                            "reference_audios": {"type": "array", "items": {"type": "string"}},
+                        },
+                    }
+                }
+            }
+        }
+
+
+@pytest.mark.parametrize("change_duration,expected_seconds", [(False, 5), (True, 10)])
+async def test_seedance_prompt_only_reaches_quote_with_correct_duration(
+    rt, change_duration, expected_seconds
+):
+    from sqlalchemy import select
+
+    from premium_bot.db import Job
+
+    await seedance_model(rt)
+    rt.bot.session.make_request = AsyncMock(return_value=True)
+    dp = dispatcher(rt)
+    base = message(1, "", 100)
+    context = FSMContext(storage=dp.storage, key=StorageKey(bot_id=rt.bot.id, chat_id=1, user_id=1))
+
+    async def callback(data, number):
+        cb = CallbackQuery(
+            id=str(number),
+            from_user=base.from_user,
+            chat_instance="optional",
+            message=base,
+            data=data,
+        )
+        await dp.feed_update(rt.bot, Update(update_id=number, callback_query=cb), rt=rt)
+
+    await callback("model:seedance", 101)
+    sent = next(
+        call.args[1]
+        for call in reversed(rt.bot.session.make_request.call_args_list)
+        if getattr(call.args[1], "reply_markup", None) is not None
+    )
+    assert any(b.text == "Без фото" for row in sent.reply_markup.inline_keyboard for b in row)
+    await callback("images:done", 102)
+    assert await context.get_state() == Studio.prompt.state
+    await dp.feed_update(
+        rt.bot, Update(update_id=103, message=message(1, "A camera flies over a city", 103)), rt=rt
+    )
+    sent = rt.bot.session.make_request.call_args.args[1]
+    buttons = [b.callback_data for row in sent.reply_markup.inline_keyboard for b in row]
+    assert "duration:next" in buttons
+    assert "trim" not in buttons
+    if change_duration:
+        await callback("duration:next", 104)
+    await callback("quote", 105)
+    async with rt.sessions() as s:
+        job = await s.scalar(select(Job).where(Job.model_key == "seedance"))
+        assert job is not None and job.input_ids == []
+        assert job.seconds == expected_seconds
+        assert job.price == Decimal(expected_seconds) * Decimal("0.1875")
+    await dp.storage.close()
+
+
+async def test_seedance_photo_can_skip_audio_but_s2v_cannot(rt):
+    from datetime import timedelta
+
+    from premium_bot.db import Media
+    from premium_bot.domain import now
+
+    await seedance_model(rt)
+    async with rt.sessions.begin() as s:
+        photo = Media(
+            user_id=1,
+            kind="photo",
+            path="test-photo.png",
+            mime="image/png",
+            size=10,
+            megapixels=1,
+            expires_at=now() + timedelta(hours=1),
+        )
+        s.add(photo)
+        await s.flush()
+        photo_id = str(photo.id)
+    rt.bot.session.make_request = AsyncMock(return_value=True)
+    dp = dispatcher(rt)
+    context = FSMContext(storage=dp.storage, key=StorageKey(bot_id=rt.bot.id, chat_id=1, user_id=1))
+    base = message(1, "", 110)
+
+    async def callback(data, number):
+        cb = CallbackQuery(
+            id=str(number),
+            from_user=base.from_user,
+            chat_instance="optional",
+            message=base,
+            data=data,
+        )
+        await dp.feed_update(rt.bot, Update(update_id=number, callback_query=cb), rt=rt)
+
+    await context.set_state(Studio.images)
+    await context.set_data({"model": "seedance", "media": [photo_id], "params": {}})
+    await callback("images:done", 111)
+    assert await context.get_state() == Studio.audio.state
+    await callback("audio:skip", 112)
+    assert await context.get_state() == Studio.prompt.state
+    assert (await context.get_data())["media"] == [photo_id]
+    for key in ("wan", "omni"):
+        await context.set_state(Studio.images)
+        await context.set_data({"model": key, "media": [], "params": {}})
+        await callback("images:done", 113)
+        assert await context.get_state() == Studio.images.state
+        await context.set_state(Studio.audio)
+        await callback("audio:skip", 114)
+        assert await context.get_state() == Studio.audio.state
+    await dp.storage.close()
+
+
 def message(uid, text, number):
     return Message(
         message_id=number,
