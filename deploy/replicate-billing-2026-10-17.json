@@ -1,0 +1,409 @@
+{
+  "z_image": [
+    {
+      "current_description": null,
+      "current_tiers": [
+        {
+          "criteria": [
+            {
+              "description": "0.5",
+              "subtype": "string",
+              "title": "target resolution",
+              "type": "equals",
+              "value": "0.5"
+            }
+          ],
+          "description": null,
+          "prices": [
+            {
+              "description": "or 400 megapixels for $1",
+              "metric": "image_output_megapixel_count",
+              "metric_display": "output image megapixel",
+              "price": "$2.50",
+              "title": "per thousand output image megapixels",
+              "type": "per-unit"
+            }
+          ],
+          "title": null
+        },
+        {
+          "criteria": [
+            {
+              "description": "1",
+              "subtype": "string",
+              "title": "target resolution",
+              "type": "equals",
+              "value": "1"
+            }
+          ],
+          "description": null,
+          "prices": [
+            {
+              "description": "or 200 megapixels for $1",
+              "metric": "image_output_megapixel_count",
+              "metric_display": "output image megapixel",
+              "price": "$5",
+              "title": "per thousand output image megapixels",
+              "type": "per-unit"
+            }
+          ],
+          "title": null
+        },
+        {
+          "criteria": [
+            {
+              "description": "2",
+              "subtype": "string",
+              "title": "target resolution",
+              "type": "equals",
+              "value": "2"
+            }
+          ],
+          "description": null,
+          "prices": [
+            {
+              "description": "or 100 megapixels for $1",
+              "metric": "image_output_megapixel_count",
+              "metric_display": "output image megapixel",
+              "price": "$0.01",
+              "title": "per output image megapixel",
+              "type": "per-unit"
+            }
+          ],
+          "title": null
+        },
+        {
+          "criteria": [
+            {
+              "description": "3",
+              "subtype": "string",
+              "title": "target resolution",
+              "type": "equals",
+              "value": "3"
+            }
+          ],
+          "description": null,
+          "prices": [
+            {
+              "description": "or around 66 megapixels for $1",
+              "metric": "image_output_megapixel_count",
+              "metric_display": "output image megapixel",
+              "price": "$0.015",
+              "title": "per output image megapixel",
+              "type": "per-unit"
+            }
+          ],
+          "title": null
+        },
+        {
+          "criteria": [
+            {
+              "description": "4",
+              "subtype": "string",
+              "title": "target resolution",
+              "type": "equals",
+              "value": "4"
+            }
+          ],
+          "description": null,
+          "prices": [
+            {
+              "description": "or 50 megapixels for $1",
+              "metric": "image_output_megapixel_count",
+              "metric_display": "output image megapixel",
+              "price": "$0.02",
+              "title": "per output image megapixel",
+              "type": "per-unit"
+            }
+          ],
+          "title": null
+        }
+      ]
+    }
+  ],
+  "nano": [
+    {
+      "current_description": null,
+      "current_tiers": [
+        {
+          "criteria": [
+            {
+              "description": "1K",
+              "subtype": "string",
+              "title": "target resolution",
+              "type": "equals",
+              "value": "1K"
+            }
+          ],
+          "description": null,
+          "prices": [
+            {
+              "description": "or around 14 images for $1",
+              "metric": "image_output_count",
+              "metric_display": "output image",
+              "price": "$0.067",
+              "title": "per output image",
+              "type": "per-unit"
+            }
+          ],
+          "title": null
+        },
+        {
+          "criteria": [
+            {
+              "description": "2K",
+              "subtype": "string",
+              "title": "target resolution",
+              "type": "equals",
+              "value": "2K"
+            }
+          ],
+          "description": null,
+          "prices": [
+            {
+              "description": "or around 99 images for $10",
+              "metric": "image_output_count",
+              "metric_display": "output image",
+              "price": "$0.101",
+              "title": "per output image",
+              "type": "per-unit"
+            }
+          ],
+          "title": null
+        },
+        {
+          "criteria": [
+            {
+              "description": "4K",
+              "subtype": "string",
+              "title": "target resolution",
+              "type": "equals",
+              "value": "4K"
+            }
+          ],
+          "description": null,
+          "prices": [
+            {
+              "description": "or around 66 images for $10",
+              "metric": "image_output_count",
+              "metric_display": "output image",
+              "price": "$0.151",
+              "title": "per output image",
+              "type": "per-unit"
+            }
+          ],
+          "title": null
+        }
+      ]
+    }
+  ],
+  "wan": [
+    {
+      "current_description": null,
+      "current_tiers": [
+        {
+          "criteria": [],
+          "description": null,
+          "prices": [
+            {
+              "description": "or 50 seconds for $1",
+              "metric": "video_output_duration_seconds",
+              "metric_display": "second of output video",
+              "price": "$0.02",
+              "title": "per second of output video",
+              "type": "per-unit"
+            }
+          ],
+          "title": null
+        }
+      ]
+    }
+  ],
+  "seedance": [
+    {
+      "current_description": null,
+      "current_tiers": [
+        {
+          "criteria": [
+            {
+              "description": "video_in",
+              "subtype": "string",
+              "title": "model variant",
+              "type": "equals",
+              "value": "video_in"
+            },
+            {
+              "description": "480p",
+              "subtype": "string",
+              "title": "target resolution",
+              "type": "equals",
+              "value": "480p"
+            }
+          ],
+          "description": null,
+          "prices": [
+            {
+              "description": "or around 12 seconds for $1",
+              "metric": "video_output_duration_seconds",
+              "metric_display": "second of output video",
+              "price": "$0.08",
+              "title": "per second of output video",
+              "type": "per-unit"
+            }
+          ],
+          "title": null
+        },
+        {
+          "criteria": [
+            {
+              "description": "non_video_in",
+              "subtype": "string",
+              "title": "model variant",
+              "type": "equals",
+              "value": "non_video_in"
+            },
+            {
+              "description": "480p",
+              "subtype": "string",
+              "title": "target resolution",
+              "type": "equals",
+              "value": "480p"
+            }
+          ],
+          "description": null,
+          "prices": [
+            {
+              "description": "or around 14 seconds for $1",
+              "metric": "video_output_duration_seconds",
+              "metric_display": "second of output video",
+              "price": "$0.07",
+              "title": "per second of output video",
+              "type": "per-unit"
+            }
+          ],
+          "title": null
+        },
+        {
+          "criteria": [
+            {
+              "description": "video_in",
+              "subtype": "string",
+              "title": "model variant",
+              "type": "equals",
+              "value": "video_in"
+            },
+            {
+              "description": "720p",
+              "subtype": "string",
+              "title": "target resolution",
+              "type": "equals",
+              "value": "720p"
+            }
+          ],
+          "description": null,
+          "prices": [
+            {
+              "description": "or around 58 seconds for $10",
+              "metric": "video_output_duration_seconds",
+              "metric_display": "second of output video",
+              "price": "$0.17",
+              "title": "per second of output video",
+              "type": "per-unit"
+            }
+          ],
+          "title": null
+        },
+        {
+          "criteria": [
+            {
+              "description": "non_video_in",
+              "subtype": "string",
+              "title": "model variant",
+              "type": "equals",
+              "value": "non_video_in"
+            },
+            {
+              "description": "720p",
+              "subtype": "string",
+              "title": "target resolution",
+              "type": "equals",
+              "value": "720p"
+            }
+          ],
+          "description": null,
+          "prices": [
+            {
+              "description": "or around 66 seconds for $10",
+              "metric": "video_output_duration_seconds",
+              "metric_display": "second of output video",
+              "price": "$0.15",
+              "title": "per second of output video",
+              "type": "per-unit"
+            }
+          ],
+          "title": null
+        }
+      ]
+    }
+  ],
+  "omni": [
+    {
+      "current_description": null,
+      "current_tiers": [
+        {
+          "criteria": [],
+          "description": null,
+          "prices": [
+            {
+              "description": "or around 62 seconds for $10",
+              "metric": "video_output_duration_seconds",
+              "metric_display": "second of output video",
+              "price": "$0.16",
+              "title": "per second of output video",
+              "type": "per-unit"
+            }
+          ],
+          "title": null
+        }
+      ]
+    }
+  ],
+  "flux": [
+    {
+      "current_description": null,
+      "current_tiers": [
+        {
+          "criteria": [],
+          "description": null,
+          "prices": [
+            {
+              "description": "or around 66 runs for $1",
+              "metric": "run_count",
+              "metric_display": "run",
+              "price": "$0.015",
+              "title": "per run",
+              "type": "fixed"
+            },
+            {
+              "description": "or around 66 megapixels for $1",
+              "metric": "image_input_megapixel_count",
+              "metric_display": "input image megapixel",
+              "price": "$0.015",
+              "title": "per input image megapixel",
+              "type": "per-unit"
+            },
+            {
+              "description": "or around 66 megapixels for $1",
+              "metric": "image_output_megapixel_count",
+              "metric_display": "output image megapixel",
+              "price": "$0.015",
+              "title": "per output image megapixel",
+              "type": "per-unit"
+            }
+          ],
+          "title": null
+        }
+      ]
+    }
+  ]
+}
